@@ -101,7 +101,7 @@ class meshNetPartsV2(nn.Module):
 # note: we ignore part number and color for now, so num_parts*9 outputs!
 class meshNetPartsV3(nn.Module):
 
-    def __init__(self, num_parts):
+    def __init__(self, num_parts, tex=True):
         super(meshNetPartsV3, self).__init__()
         self.num_parts = num_parts
         self.conv1 = nn.Conv2d(1, 6, 5)
@@ -116,6 +116,7 @@ class meshNetPartsV3(nn.Module):
          # texture classifiers:
         self.tc1 = nn.Linear(1024, 1024)
         self.tc2 = nn.Linear(1024, 98*self.num_parts*3)
+        self.tex = tex
 
     def forward(self, x):
         # print(x.shape)
@@ -136,10 +137,12 @@ class meshNetPartsV3(nn.Module):
         ntype = F.softmax(self.fo2_type(x), dim=1) # needs softmax to be diffentiable
         
         # textures:
-        t = torch.relu(self.tc1(x))
-        t = torch.sigmoid(self.tc2(t)) # has to be between [0,1]
-
-        return position, scale, rotation, ntype, t # t = textures
+        if self.tex:
+            t = torch.relu(self.tc1(x))
+            t = torch.sigmoid(self.tc2(t)) # has to be between [0,1]
+            return position, scale, rotation, ntype, t # t = textures
+        else:
+            return position, scale, rotation, ntype
 
 
 # This model takes as input the rendered RGB image frame 128x128x3

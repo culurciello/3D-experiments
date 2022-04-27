@@ -22,7 +22,7 @@ import pytorch3d
 from pytorch3d.io import load_objs_as_meshes, save_obj
 from pytorch3d.structures import Meshes, join_meshes_as_batch, join_meshes_as_scene
 from pytorch3d.ops import sample_points_from_meshes
-
+from mpl_toolkits.mplot3d import Axes3D
 from pytorch3d.loss import (
     chamfer_distance, 
     mesh_edge_loss, 
@@ -46,6 +46,19 @@ from mesh_dataset import MeshDataset
 from model import meshNetPartsV3
 from parts import get_part, mesh_protos
 
+def plot_pointcloud(mesh, title=""):
+    # Sample points uniformly from the surface of the mesh.
+    points = sample_points_from_meshes(mesh, 5000)
+    x, y, z = points.clone().detach().cpu().squeeze().unbind(1)
+    fig = plt.figure(figsize=(5, 5))
+    ax = Axes3D(fig)
+    ax.scatter3D(x, z, -y)
+    ax.set_xlabel('x')
+    ax.set_ylabel('z')
+    ax.set_zlabel('y')
+    ax.set_title(title)
+    ax.view_init(190, 30)
+    plt.show()
 
 # Show a visualization comparing the rendered predicted mesh to the ground truth mesh
 # target_image [1, h, w, p]
@@ -81,7 +94,7 @@ def plot_losses(losses):
     plt.close()
 
 
-def partsToMesh(position, scale, angle, ntype, texture_in, device, num_parts=10):
+def partsToMesh(position, scale, angle, ntype, device, texture_in=None, num_parts=10):
     # initial values:
     vertices = torch.FloatTensor().to(device)
     faces = torch.FloatTensor().to(device)
@@ -89,7 +102,7 @@ def partsToMesh(position, scale, angle, ntype, texture_in, device, num_parts=10)
 
     for n_part in range(num_parts):
         color = torch.FloatTensor([0,0,0]).to(device)
-        p_vertices, p_faces = get_part(position[n_part], scale[n_part], angle[n_part], 
+        p_vertices, p_faces = get_part(position[n_part], scale[n_part], angle[n_part],
                 ntype[n_part], device)
         # Offset faces (account for diff indexing, b/c treating as one mesh)
         p_faces = p_faces + vert_offset
@@ -97,12 +110,28 @@ def partsToMesh(position, scale, angle, ntype, texture_in, device, num_parts=10)
         vertices = torch.cat([vertices,p_vertices])
         faces = torch.cat([faces,p_faces])
 
+    if texture_in:
     # Add per vertex colors to texture the mesh
-    textures = TexturesVertex(verts_features=texture_in) # (1, num_verts, 3)
     # each elmt of verts array is diff mesh in batch
-    mesh = Meshes(verts=[vertices], faces=[faces], textures=textures)
+        textures = TexturesVertex(verts_features=texture_in) # (1, num_verts, 3)
+        mesh = Meshes(verts=[vertices], faces=[faces], textures=textures)
+    else:
+        mesh = Meshes(verts=[vertices], faces=[faces])
 
     return mesh
+
+MESH_OFFSET = 2
+def add_mesh_offset(mesh, idx, device):
+    mesh.offset_verts_(torch.Tensor((MESH_OFFSET*idx, 0, 0)).to(device))
+    return mesh
+
+def batch_partsToMesh(batch, position, scale, angle, ntype, device, texture_in=None, num_parts=10):
+    meshes = []
+    for b in range(batch):
+        m = partsToMesh(position[b], scale[b], angle[b], ntype[b], device, texture_in=texture_in, num_parts=num_parts)
+        m = add_mesh_offset(m, b, device)
+        meshes.append(m)
+    return meshes
 
 # Weight for the chamfer loss
 w_chamfer = 1.0
@@ -127,6 +156,40 @@ def voxel_loss(new_src_mesh, trg_mesh):
     # Weighted sum of the losses
     loss = loss_chamfer * w_chamfer + loss_edge * w_edge + loss_normal * w_normal + loss_laplacian * w_laplacian
     return loss
+
+
+def collate_batched_img_meshes(batch):  # pragma: no cover
+    """
+    Take a list of objects in the form of dictionaries and merge them
+    into a single dictionary. This function can be used with a Dataset
+    object to create a torch.utils.data.Dataloader which directly
+    returns Meshes objects.
+    Args:
+        batch: List of dictionaries containing information about objects
+            in the dataset.
+
+    Returns:
+        collated_dict: Dictionary of collated lists. If batch contains both
+            verts and faces, a collated mesh batch is also returned.
+    """
+    if batch is None or len(batch) == 0:
+        return None
+    collated_dict = {}
+    for k in batch[0].keys():
+        collated_dict[k] = [d[k] for d in batch]
+
+    if {"silhouette", "rgb"}.issubset(collated_dict.keys()):
+        collated_dict["silhouette"] = torch.stack(collated_dict["silhouette"])
+        collated_dict["rgb"] = torch.stack(collated_dict["rgb"])
+
+    if {"verts", "faces"}.issubset(collated_dict.keys()):
+        collated_dict["mesh"] = None
+        collated_dict["mesh"] = Meshes(
+            verts=collated_dict["verts"],
+            faces=collated_dict["faces"],
+        )
+
+    return collated_dict
 
 def get_mesh_img(obj_filename, args, device, render):
     target_rgb = torch.FloatTensor(args.nviews, args.imsize, args.imsize, 3)

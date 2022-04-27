@@ -101,7 +101,7 @@ torch.set_printoptions(profile="full", precision=2)
 # load dataset:
 # len(target_silhouette) has number of object
 # len(target_silhouette[0] has number of views for each object
-target_silhouette, target_rgb, target_cameras = torch.load(args.ddir+'/dataset.pth', map_location=device)
+target_silhouette, target_rgb, target_cameras, _ = torch.load(args.ddir+'/dataset.pth', map_location=device)
 train_dataset = MeshDataset(target_silhouette, target_rgb)
 train_loader = DataLoader(train_dataset, batch_size=args.batch_size, 
         num_workers=args.workers, shuffle=True)

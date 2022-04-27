@@ -88,6 +88,7 @@ print('Found:', len(assets), 'assets. \nList of assets:', assets)
 # loop on all assets
 target_rgb = torch.FloatTensor(len(assets), args.nviews, args.imsize, args.imsize, 3)
 target_silhouette = torch.FloatTensor(len(assets), args.nviews, args.imsize, args.imsize)
+target_mesh = []
 for idx, asset in enumerate(assets):
     print('--> processing:', asset)
     # load obj file for asset:
@@ -105,11 +106,11 @@ for idx, asset in enumerate(assets):
     center = verts.mean(0)
     scale = max((verts - center).abs().max(0)[0])
     mesh.offset_verts_(-center)
-    mesh.scale_verts_((1.0 / float(scale)));
+    mesh.scale_verts_((1.0 / float(scale)))
 
     # Create a batch of meshes by repeating the asset mesh and associated textures: 
     meshes = mesh.extend(args.nviews)
-
+    target_mesh.append(mesh)
     # Render rgb images:
     target_images = renderer_dataset_rgb(meshes, cameras=cameras, lights=lights)
     for v in range(args.nviews):
@@ -170,6 +171,6 @@ print('Target RGB shape:', target_rgb.shape)
 # save one giant dataset instead:
 if not os.path.exists(args.ddir):
     os.makedirs(args.ddir)
-torch.save([target_silhouette, target_rgb, target_cameras], 
+torch.save([target_silhouette, target_rgb, target_cameras, target_mesh],
     args.ddir+'/dataset.pth')
 
