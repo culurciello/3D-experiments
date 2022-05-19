@@ -1,5 +1,6 @@
 import os
 import pygame
+import numpy as np
 from OpenGL.GL import *
 
 
@@ -41,7 +42,7 @@ class OBJ:
                 mtl[values[0]] = list(map(float, values[1:]))
         return contents
 
-    def __init__(self, filename, swapyz=False):
+    def __init__(self, filename, swapyz=False, normalize=False):
         """Loads a Wavefront OBJ file. """
         self.vertices = []
         self.normals = []
@@ -87,6 +88,18 @@ class OBJ:
                     else:
                         norms.append(0)
                 self.faces.append((face, norms, texcoords, material))
+
+        if normalize:
+            # normalize vertex values:
+            max_vertex = max(max(self.vertices))
+            nv = np.array(self.vertices)
+            nv = nv / max_vertex
+            # 0-mean the center:
+            # print(nv.mean(axis=0))
+            nv = nv - nv.mean(axis=0)
+            self.vertices = list(nv)
+            # print(self.vertices)
+
         if self.generate_on_init:
             self.generate()
 
