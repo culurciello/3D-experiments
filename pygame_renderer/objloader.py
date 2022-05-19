@@ -7,7 +7,7 @@ class OBJ:
     generate_on_init = True
     @classmethod
     def loadTexture(cls, imagefile):
-        print(imagefile)
+        # print(imagefile)
         surf = pygame.image.load(imagefile)
         image = pygame.image.tostring(surf, 'RGBA', 1)
         ix, iy = surf.get_rect().size
