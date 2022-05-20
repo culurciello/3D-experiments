@@ -1,3 +1,16 @@
 
 *.pyc
 learnByParts/results/train_rendered_mesh_0.png
+learnCuber/dataset/dataset__rgb.png
+pygame_renderer/image.png
+learnCuber/results/rendered_mesh_99.png
+learnCuber/results/rendered_mesh_90.png
+learnCuber/results/rendered_mesh_80.png
+learnCuber/results/rendered_mesh_70.png
+learnCuber/results/rendered_mesh_60.png
+learnCuber/results/rendered_mesh_50.png
+learnCuber/results/rendered_mesh_40.png
+learnCuber/results/rendered_mesh_30.png
+learnCuber/results/rendered_mesh_20.png
+learnCuber/results/rendered_mesh_10.png
+learnCuber/results/rendered_mesh_0.png
