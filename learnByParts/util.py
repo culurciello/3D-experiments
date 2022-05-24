@@ -110,7 +110,7 @@ def partsToMesh(position, scale, angle, ntype, device, texture_in=None, num_part
         vertices = torch.cat([vertices,p_vertices])
         faces = torch.cat([faces,p_faces])
 
-    if texture_in:
+    if texture_in is not None:
     # Add per vertex colors to texture the mesh
     # each elmt of verts array is diff mesh in batch
         textures = TexturesVertex(verts_features=texture_in) # (1, num_verts, 3)
@@ -204,6 +204,10 @@ def get_mesh_img(obj_filename, args, device, render):
     scale = max((verts - center).abs().max(0)[0])
     mesh.offset_verts_(-center)
     mesh.scale_verts_((1.0 / float(scale)));
+    if mesh.textures is None:
+        verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3)
+        textures = TexturesVertex(verts_features=verts_rgb.to(device))
+        mesh.textures = textures
 
     # Create a batch of meshes by repeating the asset mesh and associated textures:
     meshes = mesh.extend(args.nviews)

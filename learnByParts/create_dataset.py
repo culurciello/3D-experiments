@@ -19,6 +19,15 @@ from pytorch3d.renderer import TexturesVertex
 from pytorch3d.io import load_objs_as_meshes, save_obj
 from renderers import get_renderers
 
+from pytorch3d.renderer import (
+    RasterizationSettings,
+    MeshRenderer,
+    MeshRasterizer,
+    SoftSilhouetteShader,
+    TexturesVertex,
+    TexturesUV,
+)
+
 title = 'Creating a dataset of images + elevation,azimuth angles from a dir of assets'
 
 def get_args():
@@ -109,6 +118,10 @@ for idx, asset in enumerate(assets):
     scale = max((verts - center).abs().max(0)[0])
     mesh.offset_verts_(-center)
     mesh.scale_verts_((1.0 / float(scale)))
+    if mesh.textures is None:
+        verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3)
+        textures = TexturesVertex(verts_features=verts_rgb.to(device))
+        mesh.textures = textures
 
     # check if mesh has texture
     if not mesh.textures:

@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 from mesh_dataset import MeshDataset
 from model import meshTRP
 from renderer import init_pygame, save_render, render_cube, render_cubes, get_tensor_from_buffer
+import math
+
 
 title = 'Learning to compose a mesh by cubes!'
 
@@ -29,7 +31,7 @@ def get_args():
     # env
     # arg('--dataset', default='data/dataset.pth', type=str, help='input mdataset (eg: data/dataset.pth)')
     # arg('--ms', type=int, default=4,  help='mesh splits for model sphere')
-    arg('--num_parts', type=int, default=10,  help='number of parts used to approximate mesh') 
+    arg('--num_parts', type=int, default=3,  help='number of parts used to approximate mesh')
     # arg('--iters', type=int, default=2000,  help='training iterations')
     arg('--rv', type=int, default=2,  help='number of mesh views for training')
     arg('--pp', type=int, default=10,  help='plot period')
@@ -115,16 +117,62 @@ train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
 #     plt.savefig(args.rdir+'train_losses_plot.png')
 #     plt.close()
 
+
+def apply_sym(p_pos, p_size, plane):
+    '''
+    given points create symmetric points and append to input
+    p_pos: tensor (parts, 3)
+    p_size: tensor (parts, 3)
+    return: p_pos and p_size with symmetric points
+    '''
+    for i, p in enumerate(p_pos):
+        #reflect positions
+        new_p = torch.tensor(mirror_point(plane, p[0],p[1],p[2]), dtype=p_pos.dtype).unsqueeze(0)
+        # copy sizes
+        p_pos = torch.cat((p_pos, new_p))
+        p_size = torch.cat((p_size, p_size[i].unsqueeze(0)))
+    return p_pos, p_size
+
+def prune_sym(t_pos, t_size, plane):
+    '''
+    given points remove symmetric points from input
+    p_pos: tensor (parts, 3)
+    p_size: tensor (parts, 3)
+    return: p_pos and p_size with symmetric points
+    '''
+    a, b, c, d = plane
+    for i, tp in enumerate(t_pos):
+        if torch.dot(torch.tensor(plane[0:3]), tp) + d < 0:
+            t_pos = t_pos[t_pos != t_pos[i]]
+            t_size = t_size[t_size != t_size[i]]
+    return t_pos, t_size
+
+# plane ax+by+cz+d=0
+# point x,y,z
+def mirror_point(plane, x1, y1, z1):
+    a, b, c, d = plane
+    k = (-a * x1 - b * y1 - c * z1 - d) / float((a * a + b * b + c * c))
+    x2 = a * k + x1
+    y2 = b * k + y1
+    z2 = c * k + z1
+    x3 = 2 * x2 - x1
+    y3 = 2 * y2 - y1
+    z3 = 2 * z2 - z1
+    return [x3, y3, z3]
+
 # neural network model:
+args.num_parts = math.ceil(args.num_parts/2)
 model = meshTRP(num_parts=args.num_parts, nviews=args.nviews).to(device)
 optimizer = torch.optim.Adam(model.parameters())
 
+plane = (1,0,0,0) #symmetry plane
 
 print('... training loop ...')
 loop = tqdm(range(args.epochs))
 
 for epoch in loop:
     for i, (render_rgb, target_pos, target_size, asset) in enumerate(train_loader):
+
         # print(render_rgb.shape, target_pos.shape, target_size.shape, asset)
         # Initialize optimizer
         optimizer.zero_grad()
@@ -133,6 +181,7 @@ for epoch in loop:
         predicted_pos, predicted_size = model(render_rgb.squeeze(0)) # forward neural net --> adds all parts!
         predicted_pos = predicted_pos.reshape(-1,3)
         predicted_size = predicted_size.reshape(-1,3)
+
         # print(predicted_pos.shape, predicted_size.shape)
         # print(predicted_pos, target_pos)
         # print(predicted_size, target_size)
@@ -153,8 +202,8 @@ for epoch in loop:
         
         # Plot mesh
         if epoch % args.pp == 0 or epoch == args.epochs-1:
-            pos = predicted_pos.clone().detach().numpy()
-            size = predicted_size.clone().detach().numpy()
+            pos = predicted_pos.clone().cpu().detach().numpy()
+            size = predicted_size.clone().cpu().detach().numpy()
             buf = render_cubes(pos, size)
             save_render(filename=args.rdir+"rendered_mesh_"+str(epoch)+".png", width=args.imsize, height=args.imsize)
             
@@ -163,10 +212,13 @@ for epoch in loop:
         optimizer.step()
 
 
+#symmetry plane
+predicted_pos, predicted_size = apply_sym(predicted_pos.cpu(), predicted_size.cpu(), plane)
+
 # training done:
 # plot_losses(losses)
-print('Cubes Positions:\n', predicted_pos.detach().numpy())
-print('Cubes Sizes:\n', predicted_size.detach().numpy())
+print('Cubes Positions:\n', predicted_pos.cpu().detach().numpy())
+print('Cubes Sizes:\n', predicted_size.cpu().detach().numpy())
 
 # # Fetch the verts and faces of the final predicted mesh
 # final_verts, final_faces = batched_mesh.get_mesh_verts_faces(0)

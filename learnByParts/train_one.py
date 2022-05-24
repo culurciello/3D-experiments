@@ -65,7 +65,7 @@ def get_args():
     # env
     # arg('--dataset', default='data/dataset.pth', type=str, help='input mdataset (eg: data/dataset.pth)')
     # arg('--ms', type=int, default=4,  help='mesh splits for model sphere')
-    arg('--num_parts', type=int, default=10,  help='number of parts used to approximate mesh') 
+    arg('--num_parts', type=int, default=10,  help='number of parts used to approximate mesh')
     # arg('--iters', type=int, default=2000,  help='training iterations')
     arg('--rv', type=int, default=2,  help='number of mesh views for training')
     arg('--pp', type=int, default=10,  help='plot period')
@@ -117,6 +117,7 @@ render = {'lights': lights, 'camera': camera, 'cameras': cameras, 'target_camera
           'renderer_dataset_rgb': renderer_dataset_rgb, 'renderer_sil': renderer_sil, 'renderer_rgb': renderer_rgb}
 
 def train_one_obj():
+# train model supervised one obj one view img->mesh
     # load 3D model:
     file = args.input
     target_rgb, target_silhouette, target_mesh = get_mesh_img(file, args, device, render)
@@ -183,8 +184,9 @@ def train_one_obj():
     torch.save(model.cpu().eval().state_dict(), final_net)
 
 
-
 def train_multi_obj():
+#train model supervised one obj multiple views in batch img->mesh
+
     # load 3D models (ShapeNet):
     # SHAPENET_PATH = "/home/achang/Workspace/3dobj/ShapeNetCore.v2"
     # shapenet_dataset = ShapeNetCore(SHAPENET_PATH)
@@ -270,5 +272,5 @@ def test():
 
 
 if __name__ == "__main__":
-    # train_one_obj()
-    train_multi_obj()
+    train_one_obj()
+    # train_multi_obj()

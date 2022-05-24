@@ -79,8 +79,8 @@ print('Found:', len(assets), 'assets. \nList of assets:', assets)
 
 # loop on all assets
 render_rgb = torch.FloatTensor(len(assets), args.nviews, args.imsize, args.imsize, 3)
-target_pos = torch.FloatTensor(len(assets), 3, 3)
-target_size = torch.FloatTensor(len(assets), 3, 3)
+target_pos = torch.FloatTensor(len(assets), 2, 3)
+target_size = torch.FloatTensor(len(assets), 2, 3)
 
 for idx, asset in enumerate(assets):
     print('--> processing:', asset)
@@ -88,8 +88,8 @@ for idx, asset in enumerate(assets):
 
     cubes_pos = [(-1,0.5,0),(0,-0.5,0),(1,0.5,0)]
     cubes_size = [(0.5,0.5,0.5),(0.5,0.5,0.5),(0.5,0.5,0.5)]
-    target_pos[idx] = torch.tensor(cubes_pos)
-    target_size[idx] = torch.tensor(cubes_size)
+    target_pos[idx] = torch.tensor(cubes_pos[0:2])
+    target_size[idx] = torch.tensor(cubes_size[0:2])
 
     # Render rgb images:
     for v in range(args.nviews):
