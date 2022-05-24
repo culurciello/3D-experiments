@@ -1,0 +1,27 @@
+# Blender MTL File: 'Sofa.blend'
+# Material Count: 3
+
+newmtl Material
+map_Kd leather1.jpeg
+
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.0
+
+newmtl Material.001
+map_Kd leather1.jpeg
+
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.0
+
+newmtl Material.002
+map_Kd leather1.jpeg
+
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Ns 10.0
+

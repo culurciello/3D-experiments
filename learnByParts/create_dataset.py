@@ -14,6 +14,8 @@ import pytorch3d
 import matplotlib.pyplot as plt
 
 # Util function for loading meshes
+import pytorch3d
+from pytorch3d.renderer import TexturesVertex
 from pytorch3d.io import load_objs_as_meshes, save_obj
 from renderers import get_renderers
 
@@ -107,6 +109,11 @@ for idx, asset in enumerate(assets):
     scale = max((verts - center).abs().max(0)[0])
     mesh.offset_verts_(-center)
     mesh.scale_verts_((1.0 / float(scale)))
+
+    # check if mesh has texture
+    if not mesh.textures:
+        color = torch.ones(1, verts.shape[0], 3, device=device)
+        mesh.textures = TexturesVertex(verts_features=color)
 
     # Create a batch of meshes by repeating the asset mesh and associated textures: 
     meshes = mesh.extend(args.nviews)
